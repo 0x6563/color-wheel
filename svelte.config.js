@@ -7,16 +7,17 @@ const config = {
     // for more information about preprocessors
     preprocess: preprocess(),
     onwarn: (warning, handler) => {
-      if (warning.code === 'a11y-no-onchange') return;
-      handler(warning);
+        if (warning.code === 'a11y-no-onchange') return;
+        handler(warning);
     },
     kit: {
+        paths: { assets: "", base: "/color-wheel" },
         adapter: adapter({
             // default options are shown
-            pages: 'build',
-            assets: 'build',
-            fallback: null
-        }),
+            pages: 'docs',
+            assets: 'docs',
+            fallback: 'index.html'
+        })
     }
 };
 

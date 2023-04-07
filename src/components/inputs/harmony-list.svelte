@@ -7,8 +7,8 @@
     interface Harmony {
         rotate?: number;
         rotateModulo?: number;
-        radiusOffset?: number;
-        radiusStep?: number;
+        scaleAbsolute?: number;
+        scaleRelative?: number;
         children?: Harmony[];
     }
     function Extend() {

@@ -1,35 +1,37 @@
 <script lang="ts">
     import ColorWheel from '@components/color-wheel.svelte';
-    import { RGBBlending, type RGBBlendModes } from '@services/color';
+    import { RGBBlending, type RGBBlender } from '@services/color';
     import Dropdown from '@components/inputs/dropdown.svelte';
     import Number from '@components/inputs/number.svelte';
     import ColorPicker from '@components/inputs/color-picker.svelte';
     import ColorBar from '@components/color-bar.svelte';
     import HarmonyList from '@components/inputs/harmony-list.svelte';
     import Flyout from '@components/flyout.svelte';
-    const blendModes: RGBBlendModes[] = Object.keys(RGBBlending) as any;
-    const tierblends: string[] = ['None', 'Smooth'];
+    import { RGB } from '@services/colorspace/rgb';
+    const blends: string[] = ['None', 'Smooth'];
+    const picks: string[] = ['Calculated', 'Image'];
     const ColorSetsFull: any = {
-        'RYB 12': ['#FE2712', '#FC600A', '#FB9902', '#FCCC1A', '#FEFE33', '#B2D732', '#66B032', '#347C98', '#0247FE', '#4424D6', '#8601AF', '#C21460'],
-        'RYB 3': ['#FE2712', '#FEFE33', '#0247FE'],
-        'RGB 12': ['#FF0000', '#FF8000', '#FFFF00', '#80FF00', '#00FF00', '#00FF80', '#00FFFF', '#0080FF', '#0000FF', '#8000FF', '#FF00FF', '#FF0080'],
-        'RGB 3': ['#FF0000', '#00FF00', '#0000FF'],
-        Custom: ['#FF0000'],
+        'RYB 12': ['#fe2712', '#fc600a', '#fb9902', '#fccc1a', '#fefe33', '#b2d732', '#66b032', '#347c98', '#0247fe', '#4424d6', '#8601af', '#c21460'],
+        'RYB 3': ['#fe2712', '#fefe33', '#0247fe'],
+        'RGB 12': ['#ff0000', '#ff8000', '#ffff00', '#80ff00', '#00ff00', '#00ff80', '#00ffff', '#0080ff', '#0000ff', '#8000ff', '#ff00ff', '#ff0080'],
+        'RGB 3': ['#ff0000', '#00ff00', '#0000ff'],
+        Custom: ['#ff0000'],
     };
     const ColorSets = {
         ...ColorSetsFull,
     };
+    ColorSetsFull.Custom = Array.from({ length: 6 }).map((v) => RGB.RandomColor());
     delete ColorSets['Custom'];
     const HarmoniesFull = {
         Custom: [{}, { rotate: 60, rotateModulo: 60 }, { rotate: 120, rotateModulo: 60 }, { rotate: 180, rotateModulo: 60 }],
-        Shades: [{}, { radiusStep: -0.99999 }, { radiusStep: -0.75 }, { radiusStep: -0.5 }, { radiusStep: -0.25 }],
+        Shades: [{}, { scaleRelative: -0.99999 }, { scaleRelative: -0.75 }, { scaleRelative: -0.5 }, { scaleRelative: -0.25 }],
         Complementary: [
-            { children: [{ radiusOffset: -0.1 }, { radiusOffset: 0.1 }] },
+            { children: [{ scaleAbsolute: -0.1 }, { scaleAbsolute: 0.1 }] },
             {
                 rotate: 180,
                 children: [
-                    { rotate: 180, radiusOffset: -0.1 },
-                    { rotate: 180, radiusOffset: 0.1 },
+                    { rotate: 180, scaleAbsolute: -0.1 },
+                    { rotate: 180, scaleAbsolute: 0.1 },
                 ],
             },
         ],
@@ -45,20 +47,21 @@
     delete Harmonies['Custom'];
 
     let pallete;
+    let colorpicking: 'Calculated' | 'Image' = 'Calculated';
     let editHarmony = false;
     let editCustomColors = false;
     let harmony: any = HarmoniesFull['Complementary'];
-    let rotation: number = 0;
-    let tiers: number = 32;
-    let skipinner: number = 2;
-    let skipouter: number = 12;
-    let wheelstart: number = 90;
-    let intervals: number = 360;
+    let renderrotation: number = 0;
+    let tiers: number = 1;
+    let skipinner: number = 0;
+    let skipouter: number = 0;
+    let wheelrotation: number = 0;
+    let slices: number = 12;
     let showSettings = false;
-    let blend: RGBBlendModes = blendModes[0];
+    let blender: RGBBlender = RGBBlending.LAB;
     let colors = ColorSets['RYB 12'];
-    let inner: string = '#FFFFFF';
-    let tierblend: string = 'None';
+    let inner: string = '#ffffff';
+    let blend: 'Smooth' | 'None' = 'None';
     let outer: string = '#000000';
     let stroke: string = '';
 
@@ -74,7 +77,6 @@
     function ShowSettings(e) {
         showSettings = true;
     }
-
     function HideSettings(e) {
         showSettings = false;
     }
@@ -98,7 +100,7 @@
 <div class="container">
     <div class="colors">
         {#if pallete}
-            {#each pallete.alternates as t}
+            {#each pallete.translations as t}
                 <div class="group">
                     <div class="swatch" style:background={t.color}><span class="hex"> {t.color}</span></div>
                     {#if t.children?.length}
@@ -113,7 +115,7 @@
         {/if}
     </div>
     <div class="widget">
-        <ColorWheel {harmony} {colors} {rotation} {blend} {inner} {outer} {intervals} {tiers} {tierblend} {skipinner} {skipouter} {stroke} {wheelstart} on:update={Handler} />
+        <ColorWheel {harmony} {colors} {colorpicking} {renderrotation} {blender} {inner} {outer} {slices} {tiers} {blend} {skipinner} {skipouter} {stroke} {wheelrotation} on:update={Handler} />
     </div>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div class="close" class:active={showSettings} on:click={HideSettings} />
@@ -122,6 +124,15 @@
         <h1 on:click={ToggleSettings}>Settings</h1>
         <div>
             <h2>Matching</h2>
+            <Dropdown bind:value={colorpicking} options={picks}>
+                <div slot="label" let:label class="flx row spread">
+                    <span class="grow label">Color Picking</span>
+                    <span>{label}</span>
+                </div>
+                <div class="option" slot="option" let:label let:selected class:selected>
+                    {label}
+                </div>
+            </Dropdown>
             <Dropdown bind:value={harmony} options={HarmoniesFull}>
                 <div slot="label" let:label class="flx row spread">
                     <span class="grow label">Harmony</span>
@@ -133,7 +144,7 @@
             </Dropdown>
             {#if harmony == HarmoniesFull.Custom}
                 <h3>Custom Harmony</h3>
-                <button on:click={() => (editHarmony = !editHarmony)} class="wide secondary">{editHarmony ? 'Hide' : 'Show'} Harmony Config</button>
+                <button on:click={() => (editHarmony = !editHarmony)} class="wide hint">{editHarmony ? 'Hide' : 'Show'} Harmony Config</button>
                 <Flyout expanded={editHarmony} polling={100}>
                     <Dropdown options={Harmonies} on:select={CopyHarmony}>
                         <div slot="label" class="flx row spread secondary">Copy From</div>
@@ -149,7 +160,7 @@
             <h2>Pallete</h2>
             <Dropdown bind:value={colors} options={ColorSetsFull}>
                 <div slot="label" let:label let:value class="flx row spread">
-                    <span class="grow label">Radial ({label})</span>
+                    <span class="grow label">Colors ({label})</span>
                     <ColorBar colors={value} />
                 </div>
 
@@ -159,7 +170,7 @@
                 </div>
             </Dropdown>
             {#if colors == ColorSetsFull.Custom}
-                <button on:click={() => (editCustomColors = !editCustomColors)} class="wide secondary">{editCustomColors ? 'Hide' : 'Show'} Color Config</button>
+                <button on:click={() => (editCustomColors = !editCustomColors)} class="wide hint">{editCustomColors ? 'Hide' : 'Show'} Color Config</button>
                 <Flyout expanded={editCustomColors} polling={100}>
                     <Dropdown options={ColorSets} on:select={CopyColors}>
                         <div slot="label" class="flx row spread secondary">Copy From</div>
@@ -193,37 +204,43 @@
                 <span class="grow label">Stroke</span>
                 <ColorPicker bind:value={stroke} />
             </div>
-            <Dropdown bind:value={blend} options={blendModes}>
-                <div slot="label" let:value class="flx row spread">
-                    <span class="grow label">Blend Mode</span>
-                    <div>{value}</div>
+            <Dropdown bind:value={blender} options={RGBBlending}>
+                <div slot="label" let:label class="flx row spread">
+                    <span class="grow label">Blending Algorithm</span>
+                    <div>{label}</div>
                 </div>
 
-                <div class="option" slot="option" let:value let:selected class:selected>
-                    {value}
+                <div class="option" slot="option" let:label let:selected class:selected>
+                    {label}
                 </div>
             </Dropdown>
         </div>
 
         <div>
             <h2>Resolution</h2>
-            <div class="flx row spread">
-                <span class="grow label">Intervals</span>
-                <Number bind:value={intervals} />
-            </div>
+
+            <Dropdown bind:value={blend} options={blends}>
+                <div slot="label" let:value class="flx row spread">
+                    <span class="grow label">Blend ({value})</span>
+                    <ColorBar {colors} blend={value} />
+                </div>
+                <div slot="option" class="flx row spread option" let:value let:selected class:selected>
+                    <span class="grow label">{value}</span>
+                    <ColorBar {colors} blend={value} />
+                </div>
+            </Dropdown>
+            {#if blend == 'None'}
+                <div class="flx row spread">
+                    <span class="grow label">Slices</span>
+                    <Number bind:value={slices} />
+                </div>
+            {/if}
             <div class="flx row spread">
                 <span class="grow label">Tiers</span>
                 <Number bind:value={tiers} />
             </div>
-            <Dropdown bind:value={tierblend} options={tierblends}>
-                <div slot="label" let:value class="flx row spread">
-                    <span class="grow label">Tier Blend</span>
-                    <div>{value}</div>
-                </div>
-                <div class="option" slot="option" let:value let:selected class:selected>
-                    {value}
-                </div>
-            </Dropdown>
+            <div class="hint">Excluding Inner and Outer colors.</div>
+
             <div class="flx row spread">
                 <span class="grow label">Skip Inner Tiers</span>
                 <Number bind:value={skipinner} />
@@ -285,6 +302,11 @@
             height: 100%;
             margin-right: 0;
         }
+    }
+    .hint {
+        font-size: 0.75em;
+        color: #ddd;
+        font-style: italic;
     }
     .swatch {
         width: 100%;

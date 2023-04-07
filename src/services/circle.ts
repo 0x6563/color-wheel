@@ -23,8 +23,9 @@ export class Circle {
         return (offset * Math.PI - relative) * (180 / Math.PI);
     }
 
-    getCoordinate(angle: number, radius: number) {
+    getCoordinate(angle: number, scale: number) {
         const radians = Circle.DegreesToRadians(angle);
+        const radius = scale * this.radius;
         const x1 = radius * Math.cos(radians - 0.5 * Math.PI) || 0;
         const y2 = -1 * radius * Math.sin(radians - 0.5 * Math.PI) || 0;
         return { x: this.center.x + x1, y: this.center.y - y2 };
@@ -49,6 +50,11 @@ export class Circle {
 
     static DegreesToRadians(degree: number) {
         return (degree * Math.PI) / 180;
+    }
+
+    static Rotate(angle: number, offset: number = 0) {
+        const m = (angle + offset) % 360;
+        return (360 + m) % 360;
     }
 
 }

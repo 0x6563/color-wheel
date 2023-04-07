@@ -1,30 +1,33 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
-    import type { Circle } from '@services/circle';
-    import { RGB, type RGBBlendModes } from '@services/color';
+    import { Circle } from '@services/circle';
     import Wheel from './canvas-wheel.svelte';
-    export let blend: RGBBlendModes;
-    export let harmony: Harmony[] = [{ rotate: 180 }];
+    import { RGB, type RGBColor } from '@services/colorspace/rgb';
+    import type { ColorWheel, RGBBlender } from '@services/color';
+    export let blender: RGBBlender;
+    export let harmony: HarmonyTranslation[] = [{ rotate: 180 }];
     export let colors: string[] = ['#FF0000', '#FF8000', '#FFFF00', '#80FF00', '#00FF00', '#00FF80', '#00FFFF', '#0080FF', '#0000FF', '#8000FF', '#FF00FF', '#FF0080'];
-    export let rotation = 90;
-    export let wheelstart = 90;
+    export let renderrotation = 0;
+    export let wheelrotation = 0;
     export let inner = '#FF0000';
     export let outer = '#0000FF';
-    export let intervals = 360;
+    export let slices = 360;
     export let tiers = 1;
     export let skipinner = 0;
     export let skipouter = 0;
     export let stroke = '';
-    export let tierblend = 'None';
+    export let blend: 'Smooth' | 'None' = 'None';
+    export let colorpicking: 'Calculated' | 'Image' = 'Calculated';
     const dispatch = createEventDispatcher();
     interface Coordinate {
         x: number;
         y: number;
     }
     let circle: Circle;
+    let wheel: ColorWheel<RGBColor>;
     let context: CanvasRenderingContext2D;
     let angle = 0;
-    let radiusPct = 0;
+    let pct = 0;
     let startAngle = 0;
     let ready = {
         wheel1: false,
@@ -33,79 +36,79 @@
     };
 
     $: {
-        if (harmony || angle || radiusPct) {
+        if (harmony || angle || pct || colorpicking) {
             DrawPreviews();
         }
     }
-    interface Harmony {
+    interface HarmonyTranslation {
         element?: HTMLElement;
         rotate?: number;
         rotateModulo?: number;
-        radiusOffset?: number;
-        radiusStep?: number;
-        children?: Harmony[];
+        scaleAbsolute?: number;
+        scaleRelative?: number;
+        children?: HarmonyTranslation[];
     }
 
     function DrawPreviews() {
         if (!context) {
             return;
         }
-        const event: any = {
-            alternates: [],
-        };
-        const radiusAbs = (radiusPct / 100) * circle.radius;
-        for (let index = 0; index < harmony.length; index++) {
-            const alt = harmony[index];
-            const coord = CalculateAlternate(circle, angle, radiusAbs, alt);
-            const color = GetColor(context, coord) as string;
-            const a: any = {
-                color: color,
+        const event: any = { translations: [] };
+        for (const h of harmony) {
+            const section: any = {
+                color: DrawPreview(h, colorpicking),
                 children: [],
             };
-            DrawPreview(alt.element as HTMLElement, coord, color);
-            if (alt.children) {
-                for (const alt2 of alt.children) {
-                    const coord = CalculateAlternate(circle, angle, radiusAbs, alt2);
-                    const color = GetColor(context, coord) as string;
-                    a.children.push(color);
-                    DrawPreview(alt2.element as HTMLElement, coord, color);
-                }
+            if (h.children) {
+                section.children = h.children.map((v) => DrawPreview(v, colorpicking));
             }
-            event.alternates.push(a);
+            event.translations.push(section);
         }
         dispatch('update', event);
     }
-    function CalculateAlternate(circle: Circle, angle: number, radius: number, alternate: Harmony) {
-        let offset = 0;
-        if (alternate.radiusOffset) {
-            offset = circle.radius * alternate.radiusOffset;
-        } else if (alternate.radiusStep && alternate.radiusStep > 0) {
-            offset = (circle.radius - radius) * alternate.radiusStep;
-        } else if (alternate.radiusStep && alternate.radiusStep < 0) {
-            offset = radius * alternate.radiusStep;
-        }
-        const rotated = Rotate(alternate.rotateModulo ? angle % alternate.rotateModulo : angle, alternate.rotate || 0);
-        return circle.getCoordinate(rotated, Cap(0, circle.radius, radius + offset));
-    }
 
+    function CalculateTranslation(angle: number, scale: number, translation: HarmonyTranslation) {
+        let offset = 0;
+        if (translation.scaleAbsolute) {
+            offset = translation.scaleAbsolute;
+        } else if (translation.scaleRelative && translation.scaleRelative > 0) {
+            offset = (1 - scale) * translation.scaleRelative + scale;
+        } else if (translation.scaleRelative && translation.scaleRelative < 0) {
+            offset = scale * translation.scaleRelative;
+        }
+        return {
+            angle: Circle.Rotate(translation.rotateModulo ? angle % translation.rotateModulo : angle, translation.rotate || 0),
+            scale: Cap(0, 1, scale + offset),
+        };
+    }
     function Cap(low: number, high: number, value: number) {
         return Math.min(high, Math.max(low, value));
     }
-    function DrawPreview(element: HTMLElement, coord: Coordinate, color: string) {
-        if (!element) {
+
+    function DrawPreview(translation: HarmonyTranslation, mode: 'Image' | 'Calculated') {
+        const scale = pct / 100;
+        const calc = CalculateTranslation(angle, scale, translation);
+        const coord = circle.getCoordinate(calc.angle, calc.scale);
+        let rgb: RGBColor | undefined;
+        if (mode == 'Calculated') {
+            rgb = wheel.getColor(calc.angle - renderrotation, calc.scale);
+        } else {
+            rgb = GetContextColor(coord);
+        }
+        if (!rgb) {
             return;
         }
-        const { width, height } = element.getBoundingClientRect();
-        element.style.backgroundColor = color;
-        element.style.left = `${coord.x - width / 2}px`;
-        element.style.top = `${coord.y - height / 2}px`;
+        const color = RGB.Format(rgb);
+        if (translation.element) {
+            const { width, height } = translation.element.getBoundingClientRect();
+            translation.element.style.backgroundColor = color;
+            translation.element.style.left = `${coord.x - width / 2}px`;
+            translation.element.style.top = `${coord.y - height / 2}px`;
+        }
+        return color;
     }
 
-    function Rotate(angle: number, degrees: number) {
-        return (angle + degrees) % 360;
-    }
-
-    function GetColor(context, { x, y }: Coordinate) {
+    function GetContextColor({ x, y }: Coordinate) {
         if (!context || typeof x === 'undefined') {
             return;
         }
@@ -113,15 +116,15 @@
         if (a == 0) {
             return;
         }
-        return RGB.Format({ r, g, b });
+        return { r, g, b };
     }
 
     function Wheel1Handler({ type, detail }) {
         ready.wheel1 = true;
         if (type == 'start') {
-            startAngle = rotation - detail.point.angle;
+            startAngle = renderrotation - detail.point.angle;
         } else if (type == 'move') {
-            rotation = (startAngle + detail.point.angle) % 360;
+            renderrotation = (startAngle + detail.point.angle) % 360;
         }
     }
 
@@ -129,23 +132,20 @@
         ready.wheel2 = true;
 
         if (type == 'start') {
-            startAngle = wheelstart - detail.point.angle;
+            startAngle = wheelrotation - detail.point.angle;
         } else if (type == 'move') {
-            wheelstart = (startAngle + detail.point.angle) % 360;
+            wheelrotation = (startAngle + detail.point.angle) % 360;
         }
     }
 
     function Wheel3Handler({ type, detail }) {
         context = detail.context;
         circle = detail.circle;
+        wheel = detail.wheel;
         if (type != 'draw' || !ready.wheel3) {
             const ref = detail.point || circle.getRandomPoint();
-            const color = GetColor(context, ref);
-            if (!color) {
-                return;
-            }
             ready.wheel3 = true;
-            radiusPct = parseFloat((100 * (ref.radius / circle.radius)).toFixed(2));
+            pct = parseFloat((100 * (ref.radius / circle.radius)).toFixed(2));
             angle = parseFloat(ref.angle.toFixed(2));
         }
         ready.wheel3 = true;
@@ -156,19 +156,19 @@
 
 <div class="box" class:ready={ready.wheel1 && ready.wheel2 && ready.wheel3}>
     <div class="layer level1">
-        <Wheel {colors} rotation={rotation + wheelstart} {blend} intervals={colors.length} {stroke} on:start={Wheel1Handler} on:move={Wheel1Handler} on:draw={Wheel1Handler} />
+        <Wheel {colors} renderrotation={renderrotation + wheelrotation} {blender} slices={colors.length} {stroke} on:start={Wheel1Handler} on:move={Wheel1Handler} on:draw={Wheel1Handler} />
     </div>
     <div class="layer level2">
-        <Wheel {colors} {rotation} {blend} {stroke} {wheelstart} on:start={Wheel2Handler} on:move={Wheel2Handler} on:draw={Wheel2Handler} />
+        <Wheel {colors} {renderrotation} {blender} {stroke} {wheelrotation} on:start={Wheel2Handler} on:move={Wheel2Handler} on:draw={Wheel2Handler} />
     </div>
     <div class="layer level3">
-        <Wheel {colors} {rotation} {blend} {inner} {outer} {intervals} {tiers} {tierblend} {skipinner} {skipouter} {stroke} {wheelstart} on:start={Wheel3Handler} on:draw={Wheel3Handler} on:move={Wheel3Handler} />
+        <Wheel {colors} {renderrotation} {blender} {inner} {outer} {slices} {tiers} {blend} {skipinner} {skipouter} {stroke} {wheelrotation} on:start={Wheel3Handler} on:draw={Wheel3Handler} on:move={Wheel3Handler} />
 
         {#each harmony as a, i}
-            <span class:main={i == 0} class:alternate={i > 0} class="preview" bind:this={a.element} />
+            <span class:primary={i == 0} class:secondary={i > 0} class="preview" bind:this={a.element} />
             {#if a.children}
                 {#each a.children as b}
-                    <span class="alternate preview" bind:this={b.element} />
+                    <span class="secondary preview" bind:this={b.element} />
                 {/each}
             {/if}
         {/each}
@@ -178,7 +178,7 @@
         <span class="symbol">°</span>
     </div>
     <div class="radius">
-        <input type="number" bind:value={radiusPct} min="0" max="100" step="0.01" />
+        <input type="number" bind:value={pct} min="0" max="100" step="0.01" />
         <div class="symbol">%</div>
     </div>
 </div>
@@ -263,11 +263,11 @@
         z-index: 1;
         pointer-events: none;
     }
-    .main {
+    .primary {
         height: 32px;
         width: 32px;
     }
-    .alternate {
+    .secondary {
         height: 16px;
         width: 16px;
     }

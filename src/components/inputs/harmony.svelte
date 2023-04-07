@@ -7,13 +7,13 @@
     interface Harmony {
         rotate?: number;
         rotateModulo?: number;
-        radiusOffset?: number;
-        radiusStep?: number;
+        scaleAbsolute?: number;
+        scaleRelative?: number;
         children?: Harmony[];
     }
 
     const dispatch = createEventDispatcher();
-    function BubbleChange() {
+    function onChange() {
         dispatch('change');
     }
 </script>
@@ -22,24 +22,24 @@
     <div class="flx column">
         <div class="section flx row spread">
             <span class="label">Angle</span>
-            <Number bind:value={harmony.rotate} on:change={BubbleChange} />
+            <Number bind:value={harmony.rotate} on:change={onChange} min={-360} max={360} />
         </div>
         <div class="section flx row spread">
             <span class="label">Modulus</span>
-            <Number bind:value={harmony.rotateModulo} on:change={BubbleChange} />
+            <Number bind:value={harmony.rotateModulo} on:change={onChange} min={0} max={360} />
         </div>
         <div class="section flx row spread">
-            <span class="label">Offset</span>
-            <Number bind:value={harmony.radiusOffset} on:change={BubbleChange} min={-1} max={1} step={0.01} />
+            <span class="label">Scale Absolute</span>
+            <Number bind:value={harmony.scaleAbsolute} on:change={onChange} min={-1} max={1} step={0.01} />
         </div>
         <div class="section flx row spread">
-            <span class="label">Step</span>
-            <Number bind:value={harmony.radiusStep} on:change={BubbleChange} min={-1} max={1} step={0.01} />
+            <span class="label">Scale Relative</span>
+            <Number bind:value={harmony.scaleRelative} on:change={onChange} min={-1} max={1} step={0.01} />
         </div>
     </div>
 
     {#if root}
-        <HarmonyList bind:harmony={harmony.children} on:change={BubbleChange} />
+        <HarmonyList bind:harmony={harmony.children} on:change={onChange} />
     {/if}
 </div>
 

@@ -1,29 +1,29 @@
 <script lang="ts">
-    import { Circle } from '@services/circle';
-    import { RGB, RGBBlending, type RGBBlendModes, type RGBColor } from '@services/color';
     import { createEventDispatcher, onMount } from 'svelte';
-    export let blend: RGBBlendModes;
+    import { Circle } from '@services/circle';
+    import { ColorWheel, type ColorBlender } from '@services/color';
+    import { RGB, type RGBColor } from '@services/colorspace/rgb';
+    export let blender: ColorBlender<RGBColor>;
     export let colors: string[] = [];
-    export let rotation = 0;
-    export let wheelstart = 0;
+    export let renderrotation = 0;
+    export let wheelrotation = 0;
     export let inner = '';
     export let outer = '';
     export let tiers = 1;
-    export let intervals = 360;
+    export let slices = 360;
     export let skipinner = 0;
     export let skipouter = 0;
     export let stroke = '';
-    export let tierblend = 'None';
+    export let blend: 'Smooth' | 'None' = 'None';
     let circle: Circle;
     const dispatch = createEventDispatcher();
-    $: {
-        if (wheelstart || blend || colors || rotation || inner || outer || intervals || tiers || skipinner || skipouter || stroke || tierblend) {
-            DrawColorWheel();
-        }
-    }
+    let v;
+    $: v = { wheelrotation, blender, colors, renderrotation, inner, outer, slices, tiers, skipinner, skipouter, stroke, blend } && DrawColorWheel();
+
     let point: Coordinate & { radius: number; angle: number };
     let canvas: HTMLCanvasElement;
     let context: CanvasRenderingContext2D;
+    let wheel: ColorWheel<RGBColor>;
     let active = false;
     interface Coordinate {
         x: number;
@@ -95,7 +95,7 @@
     });
 
     function Bubble(type: 'draw' | 'start' | 'move' | 'end') {
-        dispatch(type, { circle, point, canvas, context });
+        dispatch(type, { circle, point, canvas, context, wheel });
     }
 
     function Cap(low: number, high: number, value: number) {
@@ -117,82 +117,67 @@
         if (!context) {
             return;
         }
-        if ((inner && !RGB.ParseHex(inner)) || (outer && !RGB.ParseHex(outer)) || !intervals || intervals < 0) {
+        if ((inner && !RGB.ParseHex(inner)) || (outer && !RGB.ParseHex(outer)) || !slices || slices < 0) {
             return;
         }
+
+        wheel = new ColorWheel({
+            colors: colors.map((v) => RGB.ParseHex(v) as RGBColor),
+            blender,
+            inner: RGB.ParseHex(inner),
+            outer: RGB.ParseHex(outer),
+            slices: slices,
+            tiers,
+            skipInner: skipinner,
+            skipOuter: skipouter,
+            wheelRotation: wheelrotation,
+            renderRotation: renderrotation,
+            blend: blend,
+        });
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
         context.clearRect(0, 0, canvas.width, canvas.height);
         const x = canvas.width / 2;
         const y = canvas.height / 2;
         circle = new Circle({ x, y }, Math.min(x, y));
-        const looped = colors.slice().map((v) => RGB.ParseHex(v) as RGBColor);
-        looped.push(looped[0]);
-        const width = 360 / intervals;
+        const segments = blend == 'None' ? slices : 360;
+        const width = 360 / segments;
         const strokeStyle = RGB.ParseHex(stroke) ? stroke : '';
         DrawSlice(0, 360, 0, circle.radius);
 
         context.fillStyle = '#FFF';
         context.fill();
-
-        for (let step = 0; step <= intervals + 1; step++) {
-            const arc = intervals >= step ? width + 1 : width;
-            const angle = (360 / intervals) * step;
-            const color = GetIntervalColor((angle - wheelstart + 360) % 360, 360, looped);
-            const startAngle = rotation + angle;
-            const endAngle = rotation + angle + arc;
+        const canvasOffset = 270;
+        for (let slice = 0; slice <= segments + 1; slice++) {
+            const arc = segments >= slice ? width + 1 : width;
+            const angle = width * slice;
+            const startAngle = canvasOffset + renderrotation + angle;
+            const endAngle = canvasOffset + renderrotation + angle + arc;
             DrawSlice(startAngle, endAngle, 0, circle.radius);
-
+            const stops = wheel.getStops(angle);
             if (strokeStyle) {
                 context.strokeStyle = strokeStyle;
                 context.stroke();
             }
-            const stops: { color: RGBColor; scale: number }[] = [];
-
-            if (!tiers) {
-                if (inner) {
-                    stops.push({ scale: 0, color: RGB.ParseHex(inner) as RGBColor });
-                }
-
-                stops.push({ scale: 0.5, color });
-
-                if (outer) {
-                    stops.push({ scale: 1, color: RGB.ParseHex(outer) as RGBColor });
-                }
-            } else {
-                const colors: RGBColor[] = [];
-                let t = Math.max(1, tiers);
-                if (inner) {
-                    t++;
-                    colors.push(RGB.ParseHex(inner) as RGBColor);
-                }
-                colors.push(color);
-                if (outer) {
-                    t++;
-                    colors.push(RGB.ParseHex(outer) as RGBColor);
-                }
-                colors.push(colors[colors.length - 1]);
-                const low = Cap(0, t, skipinner);
-                const high = t - Cap(0, t, skipouter);
-                for (let i = low; i < high; i++) {
-                    stops.push({ color: GetIntervalColor(i, t, colors), scale: (i - low) / (high - low) });
-                }
-            }
-            if (tierblend === 'Smooth') {
+            if (blend === 'Smooth' && stops.length > 1) {
                 const gradient = context.createRadialGradient(x, y, 0, x, y, circle.radius);
+                const step = 1 / (stops.length - 1);
+                let scale = 0;
                 for (const stop of stops) {
-                    gradient.addColorStop(stop.scale, RGB.Format(stop.color));
+                    gradient.addColorStop(scale, RGB.Format(stop));
+                    scale += step;
                 }
                 context.fillStyle = gradient;
                 context.fill();
             } else {
+                const step = 1 / stops.length;
+
                 for (let i = 0; i < stops.length; i++) {
                     const current = stops[i];
-                    const next = stops[i + 1];
-                    const inner = circle.radius * Cap(0, 1, current.scale);
-                    const outer = circle.radius * Cap(0, 1, (next?.scale || 1) + 0.01);
+                    const inner = circle.radius * Cap(0, 1, i * step);
+                    const outer = circle.radius * Cap(0, 1, (i + 1) * step + 0.01);
                     DrawSlice(startAngle, endAngle, inner, outer);
-                    context.fillStyle = RGB.Format(current.color);
+                    context.fillStyle = RGB.Format(current);
                     context.fill();
                     if (strokeStyle) {
                         context.strokeStyle = strokeStyle;
@@ -215,17 +200,6 @@
 
         context.arc(circle.center.x, circle.center.y, outer, a1, b1, false);
         context.closePath();
-    }
-    function GetIntervalColor(interval: number, max: number, colors: RGBColor[]) {
-        const size = max / (colors.length - 1);
-        const i = Math.floor(interval / size);
-        if (i == colors.length) {
-            return colors[colors.length - 1];
-        }
-        const low = colors[i];
-        const high = colors[i + 1];
-        const scale = (interval % size) / size;
-        return RGBBlending[blend](low, high, scale);
     }
 </script>
 
