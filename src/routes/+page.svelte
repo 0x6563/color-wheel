@@ -61,7 +61,7 @@
     let blender: RGBBlender = RGBBlending.LAB;
     let colors = ColorSets['RYB 12'];
     let inner: string = '#ffffff';
-    let blend: 'Smooth' | 'None' = 'None';
+    let blend: 'Smooth' | 'None' = 'Smooth';
     let outer: string = '#000000';
     let stroke: string = '';
 
