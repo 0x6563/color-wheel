@@ -81,7 +81,7 @@
         left: 4px;
         top: 4px;
         bottom: 4px;
-        width: 100px;
+        width: 9ch;
     }
     .reset {
         position: absolute;

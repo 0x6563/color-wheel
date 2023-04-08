@@ -40,7 +40,7 @@
         {/each}
     </span>
 {:else}
-    <canvas bind:this={canvas} height="20" width="100" />
+    <canvas bind:this={canvas} height="32" width="100" />
 {/if}
 
 <style lang="scss">
@@ -50,12 +50,12 @@
     }
     .color {
         display: block;
-        height: 20px;
+        height: 32px;
         width: 100%;
         flex: 1 1 auto;
     }
     canvas {
         width: 100%;
-        height: 20px;
+        height: 32px;
     }
 </style>

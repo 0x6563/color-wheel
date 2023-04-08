@@ -174,11 +174,11 @@
         {/each}
     </div>
     <div class="angle">
-        <input type="number" bind:value={angle} min="0" max="360" step="0.01" />
+        <input type="number" bind:value={angle} min="0" max="360" step="0.01" style:width={angle.toString().length + 1 + 'ch'} />
         <span class="symbol">°</span>
     </div>
     <div class="radius">
-        <input type="number" bind:value={pct} min="0" max="100" step="0.01" />
+        <input type="number" bind:value={pct} min="0" max="100" step="0.01" style:width={pct.toString().length + 1 + 'ch'} />
         <div class="symbol">%</div>
     </div>
 </div>

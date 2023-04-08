@@ -13,6 +13,7 @@ body,
 #app {
 
     &.dark {
+        --accent: #598ae5;
         --fill: #111;
         --light-fill: #444;
         --light-stroke: #CCC;
@@ -21,6 +22,7 @@ body,
     }
 
     &.light {
+        --accent: #1153d0;
         --fill: #FFF;
         --stroke: #111;
         --light-stroke: #444;
@@ -98,5 +100,15 @@ body,
         background: none;
         color: inherit;
         cursor: pointer;
+    }
+
+    .variable {
+        color: var(--accent);
+    }
+
+    .subtext {
+        font-style: italic;
+        color: var(--light-stroke);
+        font-size: .75em;
     }
 }

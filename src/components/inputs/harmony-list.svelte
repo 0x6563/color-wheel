@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import Harmony from './harmony.svelte';
+    import Icon from '@components/icon.svelte';
     export let harmony: Harmony[] = [];
     export let root: boolean = false;
     const dispatch = createEventDispatcher();
@@ -39,16 +40,16 @@
         {/if}
     </h4>
     {#if harmony}
-            {#each harmony as h, i}
-                <div class="flx row item spread">
-                    <div class="side">
-                        {#if !root || i > 0}
-                            <button class="delete" on:click={Delete(h)}></button>
-                        {/if}
-                    </div>
-                    <Harmony bind:harmony={h} {root} on:change={() => dispatch('change')} />
+        {#each harmony as h, i}
+            <div class="flx row item spread">
+                <div class="side">
+                    {#if !root || i > 0}
+                        <button class="delete" on:click={Delete(h)}><Icon icon="delete" /></button>
+                    {/if}
                 </div>
-            {/each}
+                <Harmony bind:harmony={h} {root} on:change={() => dispatch('change')} />
+            </div>
+        {/each}
     {/if}
     <button class="extend" on:click={Extend}>+</button>
     <div class="hr" />
@@ -77,11 +78,11 @@
     }
     .delete {
         position: absolute;
-        top: 6px;
+        top: 12px;
         left: 6px;
         width: 24px;
         height: 24px;
-        font-size: 24px;
+        font-size: 18px;
     }
     .extend {
         width: 100%;
@@ -89,38 +90,9 @@
         font-weight: 700;
         padding: 8px 0;
     }
-    
+
     .delete {
         mix-blend-mode: lighten;
-
         cursor: pointer;
-
-        &:before,
-        &:after {
-            position: absolute;
-            left: 0;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            margin: auto;
-            content: ' ';
-            height: 75%;
-            max-height: 40px;
-            width: 2px;
-            background-color: #aaa;
-            transition: all 200ms;
-        }
-        &:before {
-            transform: rotate(45deg);
-        }
-        &:after {
-            transform: rotate(-45deg);
-        }
-        &:hover {
-            &:before,
-            &:after {
-                background-color: #ccc;
-            }
-        }
     }
 </style>

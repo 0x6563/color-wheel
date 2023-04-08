@@ -16,7 +16,7 @@
     }
 </script>
 
-<input type="number" class="shrink" bind:value {min} {max} {step} on:change={() => dispatch('change')} on:keypress={format} />
+<input type="number" class="shrink variable" bind:value {min} {max} {step} on:change={() => dispatch('change')} on:keypress={format} />
 
 <style lang="scss">
     input {
@@ -34,7 +34,6 @@
         padding-right: 4px;
         &:hover,
         &:focus {
-            color: #1abaff;
             outline: none;
         }
         -moz-appearance: textfield;
