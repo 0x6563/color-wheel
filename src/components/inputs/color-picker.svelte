@@ -1,4 +1,6 @@
 <script lang="ts">
+    import ColorShade from '@components/color-shade.svelte';
+    import Icon from '@components/icon.svelte';
     import { createEventDispatcher } from 'svelte';
 
     export let value: string = '';
@@ -16,19 +18,19 @@
 <span class="wrap">
     <span class="inner">
         {#if value && !required}
-            <button on:click={Reset}>
-                <span class="shade" />
-                <span class="reset" />
+            <button class="reset" on:click={Reset}>
+                <ColorShade>
+                    <Icon icon="close" />
+                </ColorShade>
             </button>
         {/if}
-        <label style:background={value || '#444'} class:empty={!value}>
+        <label style:background={value || 'var(--light-fill)'} class:empty={!value}>
             <input type="color" bind:value on:blur={EventFactory('blur')} on:change={EventFactory('change')} />
             {#if value}
-                <span class="color">
-                    <span class="shade" />
-                    <span class="hex">
+                <span class="hex">
+                    <ColorShade>
                         {value}
-                    </span>
+                    </ColorShade>
                 </span>
             {/if}
         </label>
@@ -43,6 +45,7 @@
         font-style: italic;
         line-height: 32px;
         cursor: pointer;
+        transition: all 300ms;
         &.empty {
             &:before {
                 position: absolute;
@@ -73,78 +76,35 @@
         width: 100%;
         box-sizing: border-box;
     }
-    .color,
-    button {
-        position: absolute;
-        display: block;
-        height: 100%;
-        top: 0;
-        background: none;
-    }
-    .color {
-        width: 100px;
-        color: #eee;
-    }
-    button {
-        border: none;
-        right: 0;
-        width: 40px;
-    }
-    .shade,
-    .reset,
     .hex {
         position: absolute;
-        right: 0;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        margin: auto;
-        text-align: center;
-    }
-    .color .shade {
-        left: 6px;
-        right: 6px;
+        left: 4px;
         top: 4px;
         bottom: 4px;
-    }
-    .shade {
-        mix-blend-mode: multiply;
-        background: #444;
-    }
-    .hex {
-        mix-blend-mode: lighten;
+        width: 100px;
     }
     .reset {
-        mix-blend-mode: lighten;
+        position: absolute;
+        display: block;
 
-        cursor: pointer;
-
-        &:before,
-        &:after {
+        background: none;
+        border: none;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 40px;
+        font-size: 24px;
+    }
+    .hex,
+    .reset {
+        :global(.shade) {
+            text-align: center;
+            line-height: 24px;
             position: absolute;
-            left: 0;
             top: 0;
+            left: 0;
             right: 0;
             bottom: 0;
-            margin: auto;
-            content: ' ';
-            height: 75%;
-            max-height: 40px;
-            width: 2px;
-            background-color: #aaa;
-            transition: all 200ms;
-        }
-        &:before {
-            transform: rotate(45deg);
-        }
-        &:after {
-            transform: rotate(-45deg);
-        }
-        &:hover {
-            &:before,
-            &:after {
-                background-color: #ccc;
-            }
         }
     }
 </style>

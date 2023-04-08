@@ -72,7 +72,7 @@
     button {
         border: none;
         background: none;
-        color: #fff;
+        color: var(--stroke);
         cursor: pointer;
     }
     .delete {

@@ -27,7 +27,7 @@
         appearance: none;
         background: inherit;
         border-radius: 0;
-        color: #fff;
+        color: var(--stroke);
         border: none;
         font-style: italic;
         font-size: 1em;

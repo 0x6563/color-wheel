@@ -8,8 +8,12 @@
     import HarmonyList from '@components/inputs/harmony-list.svelte';
     import Flyout from '@components/flyout.svelte';
     import { RGB } from '@services/colorspace/rgb';
+    import { CopyToClipboard } from '@services/clipboard';
+    import Icon from '@components/icon.svelte';
+    import ColorShade from '@components/color-shade.svelte';
+    import { browser } from '$app/environment';
     const blends: string[] = ['None', 'Smooth'];
-    const picks: string[] = ['Calculated', 'Image'];
+    const picks: string[] = ['Calculated', 'Rendered'];
     const ColorSetsFull: any = {
         'RYB 12': ['#fe2712', '#fc600a', '#fb9902', '#fccc1a', '#fefe33', '#b2d732', '#66b032', '#347c98', '#0247fe', '#4424d6', '#8601af', '#c21460'],
         'RYB 3': ['#fe2712', '#fefe33', '#0247fe'],
@@ -45,9 +49,9 @@
         ...HarmoniesFull,
     };
     delete Harmonies['Custom'];
-
+    let theme: 'light' | 'dark' = browser && window && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     let pallete;
-    let colorpicking: 'Calculated' | 'Image' = 'Calculated';
+    let colorpicking: 'Calculated' | 'Rendered' = 'Calculated';
     let editHarmony = false;
     let editCustomColors = false;
     let harmony: any = HarmoniesFull['Complementary'];
@@ -97,171 +101,210 @@
     }
 </script>
 
-<div class="container">
-    <div class="colors">
-        {#if pallete}
-            {#each pallete.translations as t}
-                <div class="group">
-                    <div class="swatch" style:background={t.color}><span class="hex"> {t.color}</span></div>
-                    {#if t.children?.length}
-                        <div class="group">
-                            {#each t.children as t2}
-                                <div class="swatch" style:background={t2}><span class="hex"> {t2}</span></div>
-                            {/each}
+<div id="app" class:light={theme == 'light'} class:dark={theme == 'dark'}>
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <div class="container">
+        <div class="colors">
+            {#if pallete}
+                {#each pallete.translations as { children, color }}
+                    <div class="group">
+                        <div class="swatch" style:background={color}>
+                            <ColorShade>
+                                <span class="hex" on:click={() => CopyToClipboard(color)}>
+                                    <span class="code"> {color}</span><Icon icon="content_copy" align="bottom" />
+                                </span>
+                            </ColorShade>
                         </div>
+                        {#if children?.length}
+                            <div class="group">
+                                {#each children as color}
+                                    <div class="swatch" style:background={color}>
+                                        <ColorShade>
+                                            <span class="hex" on:click={() => CopyToClipboard(color)}>
+                                                <span class="code"> {color}</span><Icon icon="content_copy" align="bottom" />
+                                            </span>
+                                        </ColorShade>
+                                    </div>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+                {/each}
+            {/if}
+        </div>
+        <div class="widget">
+            <ColorWheel {harmony} {colors} {colorpicking} {renderrotation} {blender} {inner} {outer} {slices} {tiers} {blend} {skipinner} {skipouter} {stroke} {wheelrotation} on:update={Handler} />
+        </div>
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div class="close" class:active={showSettings} on:click={HideSettings} />
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div class="settings" class:active={showSettings} on:click={ShowSettings}>
+            <h1 on:click={ToggleSettings}>Color Wheel</h1>
+            <a href="https://github.com/0x6563" target="_blank" class="hint">by 0x6563</a>
+            <div>
+                <h2>General</h2>
+                <div class="flx row spread">
+                    <div class="label">Theme</div>
+                    {#if theme == 'dark'}
+                        <button class="btn" on:click={() => (theme = 'light')}>Dark Mode <Icon icon="dark_mode" align="bottom" /> </button>
+                    {:else}
+                        <button class="btn" on:click={() => (theme = 'dark')}>Light Mode <Icon icon="light_mode" align="bottom" /> </button>
                     {/if}
                 </div>
-            {/each}
-        {/if}
-    </div>
-    <div class="widget">
-        <ColorWheel {harmony} {colors} {colorpicking} {renderrotation} {blender} {inner} {outer} {slices} {tiers} {blend} {skipinner} {skipouter} {stroke} {wheelrotation} on:update={Handler} />
-    </div>
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="close" class:active={showSettings} on:click={HideSettings} />
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <div class="settings" class:active={showSettings} on:click={ShowSettings}>
-        <h1 on:click={ToggleSettings}>Settings</h1>
-        <div>
-            <h2>Matching</h2>
-            <Dropdown bind:value={colorpicking} options={picks}>
-                <div slot="label" let:label class="flx row spread">
-                    <span class="grow label">Color Picking</span>
-                    <span>{label}</span>
-                </div>
-                <div class="option" slot="option" let:label let:selected class:selected>
-                    {label}
-                </div>
-            </Dropdown>
-            <Dropdown bind:value={harmony} options={HarmoniesFull}>
-                <div slot="label" let:label class="flx row spread">
-                    <span class="grow label">Harmony</span>
-                    <span>{label}</span>
-                </div>
-                <div class="option" slot="option" let:label let:selected class:selected>
-                    {label}
-                </div>
-            </Dropdown>
-            {#if harmony == HarmoniesFull.Custom}
-                <h3>Custom Harmony</h3>
-                <button on:click={() => (editHarmony = !editHarmony)} class="wide hint">{editHarmony ? 'Hide' : 'Show'} Harmony Config</button>
-                <Flyout expanded={editHarmony} polling={100}>
-                    <Dropdown options={Harmonies} on:select={CopyHarmony}>
-                        <div slot="label" class="flx row spread secondary">Copy From</div>
-                        <div class="option" slot="option" let:label let:selected class:selected>
-                            {label}
-                        </div>
-                    </Dropdown>
-                    <HarmonyList bind:harmony={HarmoniesFull.Custom} root={true} on:change={RefreshHarmony} />
-                </Flyout>
-            {/if}
-        </div>
-        <div>
-            <h2>Pallete</h2>
-            <Dropdown bind:value={colors} options={ColorSetsFull}>
-                <div slot="label" let:label let:value class="flx row spread">
-                    <span class="grow label">Colors ({label})</span>
-                    <ColorBar colors={value} />
-                </div>
-
-                <div class="flx row spread option" slot="option" let:label let:value let:selected class:selected>
-                    <span class="grow label">{label}</span>
-                    <ColorBar colors={value} />
-                </div>
-            </Dropdown>
-            {#if colors == ColorSetsFull.Custom}
-                <button on:click={() => (editCustomColors = !editCustomColors)} class="wide hint">{editCustomColors ? 'Hide' : 'Show'} Color Config</button>
-                <Flyout expanded={editCustomColors} polling={100}>
-                    <Dropdown options={ColorSets} on:select={CopyColors}>
-                        <div slot="label" class="flx row spread secondary">Copy From</div>
-                        <div class="flx row spread option" slot="option" let:label let:value let:selected class:selected>
-                            <span class="grow label">{label}</span>
-                            <ColorBar colors={value} />
-                        </div>
-                    </Dropdown>
-                    {#each ColorSetsFull.Custom as c, i}
-                        <ColorPicker bind:value={c} required={i == 0} on:blur={RefreshColors} on:reset={RefreshColors} />
-                    {/each}
-
-                    <button
-                        class="wide"
-                        on:click={() => {
-                            ColorSetsFull.Custom.push('#FFFFFF');
-                            RefreshColors();
-                        }}>+</button
-                    >
-                </Flyout>
-            {/if}
-            <div class="flx row spread">
-                <span class="grow label">Inner</span>
-                <ColorPicker bind:value={inner} />
-            </div>
-            <div class="flx row spread">
-                <span class="grow label">Outer</span>
-                <ColorPicker bind:value={outer} />
-            </div>
-            <div class="flx row spread">
-                <span class="grow label">Stroke</span>
-                <ColorPicker bind:value={stroke} />
-            </div>
-            <Dropdown bind:value={blender} options={RGBBlending}>
-                <div slot="label" let:label class="flx row spread">
-                    <span class="grow label">Blending Algorithm</span>
-                    <div>{label}</div>
-                </div>
-
-                <div class="option" slot="option" let:label let:selected class:selected>
-                    {label}
-                </div>
-            </Dropdown>
-        </div>
-
-        <div>
-            <h2>Resolution</h2>
-
-            <Dropdown bind:value={blend} options={blends}>
-                <div slot="label" let:value class="flx row spread">
-                    <span class="grow label">Blend ({value})</span>
-                    <ColorBar {colors} blend={value} />
-                </div>
-                <div slot="option" class="flx row spread option" let:value let:selected class:selected>
-                    <span class="grow label">{value}</span>
-                    <ColorBar {colors} blend={value} />
-                </div>
-            </Dropdown>
-            {#if blend == 'None'}
                 <div class="flx row spread">
-                    <span class="grow label">Slices</span>
-                    <Number bind:value={slices} />
+                    <span class="label">Donate</span>
+                    <a href="https://www.buymeacoffee.com/0x6563" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="38px" alt="Buy Me A Coffee" /></a>
                 </div>
-            {/if}
-            <div class="flx row spread">
-                <span class="grow label">Tiers</span>
-                <Number bind:value={tiers} />
-            </div>
-            <div class="hint">Excluding Inner and Outer colors.</div>
+                <h2>Settings</h2>
 
-            <div class="flx row spread">
-                <span class="grow label">Skip Inner Tiers</span>
-                <Number bind:value={skipinner} />
+                <h3>Matching</h3>
+                <Dropdown bind:value={colorpicking} options={picks}>
+                    <div slot="label" let:label class="flx row spread">
+                        <span class="grow label">Color Picking</span>
+                        <span>{label}</span>
+                    </div>
+                    <div class="option" slot="option" let:label let:selected class:selected>
+                        {label}
+                        {#if label == 'Rendered'}
+                            <div class="hint">Use pixel data from the rendered color wheel.</div>
+                        {/if}
+                        {#if label == 'Calculated'}
+                            <div class="hint">Use angle and percentage of radius to calculate color.</div>
+                        {/if}
+                    </div>
+                </Dropdown>
+                <Dropdown bind:value={harmony} options={HarmoniesFull}>
+                    <div slot="label" let:label class="flx row spread">
+                        <span class="grow label">Harmony</span>
+                        <span>{label}</span>
+                    </div>
+                    <div class="option" slot="option" let:label let:selected class:selected>
+                        {label}
+                    </div>
+                </Dropdown>
+                {#if harmony == HarmoniesFull.Custom}
+                    <button on:click={() => (editHarmony = !editHarmony)} class="wide hint">{editHarmony ? 'Hide' : 'Show'} Harmony Config</button>
+                    <Flyout expanded={editHarmony} polling={100}>
+                        <h4>Custom Harmony</h4>
+                        <Dropdown options={Harmonies} on:select={CopyHarmony}>
+                            <div slot="label" class="flx row spread secondary">Copy From</div>
+                            <div class="option" slot="option" let:label let:selected class:selected>
+                                {label}
+                            </div>
+                        </Dropdown>
+                        <HarmonyList bind:harmony={HarmoniesFull.Custom} root={true} on:change={RefreshHarmony} />
+                    </Flyout>
+                {/if}
             </div>
-            <div class="flx row spread">
-                <span class="grow label">Skip Outer Tiers</span>
-                <Number bind:value={skipouter} />
+            <div>
+                <h3>Pallete</h3>
+                <Dropdown bind:value={colors} options={ColorSetsFull}>
+                    <div slot="label" let:label let:value class="flx row spread">
+                        <span class="grow label">Colors ({label})</span>
+                        <ColorBar colors={value} />
+                    </div>
+
+                    <div class="flx row spread option" slot="option" let:label let:value let:selected class:selected>
+                        <span class="grow label">{label}</span>
+                        <ColorBar colors={value} />
+                    </div>
+                </Dropdown>
+                {#if colors == ColorSetsFull.Custom}
+                    <button on:click={() => (editCustomColors = !editCustomColors)} class="wide hint">{editCustomColors ? 'Hide' : 'Show'} Color Config</button>
+                    <Flyout expanded={editCustomColors} polling={100}>
+                        <Dropdown options={ColorSets} on:select={CopyColors}>
+                            <div slot="label" class="flx row spread secondary">Copy From</div>
+                            <div class="flx row spread option" slot="option" let:label let:value let:selected class:selected>
+                                <span class="grow label">{label}</span>
+                                <ColorBar colors={value} />
+                            </div>
+                        </Dropdown>
+                        {#each ColorSetsFull.Custom as c, i}
+                            <ColorPicker bind:value={c} required={i == 0} on:blur={RefreshColors} on:reset={RefreshColors} />
+                        {/each}
+
+                        <button
+                            class="wide"
+                            on:click={() => {
+                                ColorSetsFull.Custom.push('#FFFFFF');
+                                RefreshColors();
+                            }}>+</button
+                        >
+                    </Flyout>
+                {/if}
+                <div class="flx row spread">
+                    <span class="grow label">Inner</span>
+                    <ColorPicker bind:value={inner} />
+                </div>
+                <div class="flx row spread">
+                    <span class="grow label">Outer</span>
+                    <ColorPicker bind:value={outer} />
+                </div>
+                <div class="flx row spread">
+                    <span class="grow label">Stroke</span>
+                    <ColorPicker bind:value={stroke} />
+                </div>
+                <Dropdown bind:value={blender} options={RGBBlending}>
+                    <div slot="label" let:label class="flx row spread">
+                        <span class="grow label">Blending Algorithm</span>
+                        <div>{label}</div>
+                    </div>
+
+                    <div class="option" slot="option" let:label let:selected class:selected>
+                        {label}
+                    </div>
+                </Dropdown>
             </div>
+
+            <div>
+                <h3>Resolution</h3>
+
+                <Dropdown bind:value={blend} options={blends}>
+                    <div slot="label" let:value class="flx row spread">
+                        <span class="grow label">Blend ({value})</span>
+                        <ColorBar {colors} blend={value} />
+                    </div>
+                    <div slot="option" class="flx row spread option" let:value let:selected class:selected>
+                        <span class="grow label">{value}</span>
+                        <ColorBar {colors} blend={value} />
+                    </div>
+                </Dropdown>
+
+                {#if blend == 'None'}
+                    <div class="flx row spread">
+                        <span class="grow label">Slices</span>
+                        <Number bind:value={slices} />
+                    </div>
+                {/if}
+                <div class="flx row spread">
+                    <span class="grow label">Tiers</span>
+                    <Number bind:value={tiers} />
+                </div>
+                <div class="hint">Excluding Inner and Outer colors.</div>
+
+                <div class="flx row spread">
+                    <span class="grow label">Skip Inner Tiers</span>
+                    <Number bind:value={skipinner} />
+                </div>
+                <div class="flx row spread">
+                    <span class="grow label">Skip Outer Tiers</span>
+                    <Number bind:value={skipouter} />
+                </div>
+            </div>
+            <h2>About</h2>
+            <a href="https://github.com/0x6563/color-wheel/issues">Having Issues?</a>
         </div>
     </div>
 </div>
 
 <style lang="scss">
     h1 {
-        cursor: pointer;
         margin: 0;
         padding: 0;
         height: 60px;
         line-height: 60px;
     }
-    h2 {
+    h4 {
         padding: 0;
         margin: 0;
         margin-top: 24px;
@@ -283,7 +326,7 @@
 
     .secondary {
         font-style: italic;
-        color: #eee;
+        color: var(--light-stroke);
     }
     .colors {
         position: absolute;
@@ -305,7 +348,7 @@
     }
     .hint {
         font-size: 0.75em;
-        color: #ddd;
+        color: var(--light-stroke);
         font-style: italic;
     }
     .swatch {
@@ -321,15 +364,18 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0) 20%, #111 65%);
+            background: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0) 20%, var(--fill) 65%);
+            transition: all 350ms;
         }
         .hex {
-            display: inline-block;
-            margin: 4px;
             font-weight: 600;
-            mix-blend-mode: hard-light;
-            background: #333;
             padding: 4px 8px;
+            display: inline-block;
+        }
+        :global(.shade) {
+            position: absolute;
+            top: 4px;
+            left: 4px;
         }
     }
     div {
@@ -343,7 +389,7 @@
         bottom: 0;
     }
     .settings {
-        background: #111;
+        background: var(--fill);
         position: absolute;
         right: -15%;
         width: 30%;
@@ -351,20 +397,29 @@
         bottom: 0;
         overflow: hidden;
         z-index: 1;
-        opacity: 0.4;
         transition: all 350ms;
         padding: 0 20px 60px;
         box-sizing: border-box;
         z-index: 100;
         -ms-overflow-style: none; /* Internet Explorer 10+ */
         scrollbar-width: none; /* Firefox */
+        box-shadow: 0px 0px 0px black;
+        & > * {
+            opacity: 0.4;
+            pointer-events: none;
+        }
         &::-webkit-scrollbar {
             display: none; /* Safari and Chrome */
         }
         &.active {
-            opacity: 1;
+            & > * {
+                opacity: 1;
+                pointer-events: initial;
+            }
+
             overflow: auto;
             right: 0px;
+            box-shadow: 0px 0px 5px 1px black;
         }
     }
 
@@ -382,7 +437,7 @@
         appearance: none;
         width: 100%;
         height: 2em;
-        color: #fff;
+        color: var(--stroke);
         cursor: pointer;
         &:focus {
             outline: none;
@@ -391,7 +446,7 @@
     .option {
         padding: 8px;
         transition: all 200ms;
-        background: #111;
+        background: var(--fill);
 
         &::before {
             content: ' ';
@@ -399,7 +454,7 @@
             width: 15px;
         }
         &:hover {
-            background: #555;
+            background: var(--light-fill);
         }
         &.selected {
             &::before {
@@ -416,10 +471,8 @@
             right: 0;
             width: 100%;
             top: calc(100vh - 60px);
-            background: rgba(0, 0, 0, 0.2);
             &.active {
                 top: 0;
-                background: #111;
             }
         }
     }

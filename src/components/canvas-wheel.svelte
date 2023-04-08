@@ -15,10 +15,10 @@
     export let skipouter = 0;
     export let stroke = '';
     export let blend: 'Smooth' | 'None' = 'None';
-    let circle: Circle;
     const dispatch = createEventDispatcher();
-    let v;
-    $: v = { wheelrotation, blender, colors, renderrotation, inner, outer, slices, tiers, skipinner, skipouter, stroke, blend } && DrawColorWheel();
+    let circle: Circle;
+    let events;
+    $: events = { wheelrotation, blender, colors, renderrotation, inner, outer, slices, tiers, skipinner, skipouter, stroke, blend } && DrawColorWheel();
 
     let point: Coordinate & { radius: number; angle: number };
     let canvas: HTMLCanvasElement;
@@ -33,66 +33,42 @@
     onMount(() => {
         context = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
         DrawColorWheel();
+    });
 
-        canvas.addEventListener('mousedown', (e) => {
+    function OnStart(preventDefault?: boolean) {
+        return (e) => {
             active = true;
             point = GetPoint(e);
+            if (preventDefault) {
+                e.preventDefault();
+            }
             Bubble('start');
-        });
-
-        canvas.addEventListener(
-            'touchstart',
-            (e) => {
-                active = true;
-                point = GetPoint(e.touches[0]);
-                Bubble('start');
-            },
-            { passive: false }
-        );
-
-        window.addEventListener('mousemove', (e) => {
+        };
+    }
+    function OnMove(preventDefault?: boolean) {
+        return (e) => {
             if (!active) {
                 return;
             }
             point = GetPoint(e);
+            if (preventDefault) {
+                e.preventDefault();
+            }
             Bubble('move');
-        });
-
-        window.addEventListener(
-            'touchmove',
-            (e) => {
-                if (!active) {
-                    return;
-                }
-                point = GetPoint(e.touches[0]);
-                e.preventDefault();
-                Bubble('move');
-            },
-            { passive: false }
-        );
-
-        window.addEventListener('mouseup', (e) => {
+        };
+    }
+    function OnEnd(preventDefault?: boolean) {
+        return (e) => {
+            if (!active) {
+                return;
+            }
             active = false;
-            Bubble('end');
-        });
-
-        window.addEventListener(
-            'touchend',
-            (e) => {
-                if (!active) {
-                    return;
-                }
-                active = false;
+            if (preventDefault) {
                 e.preventDefault();
-                Bubble('end');
-            },
-            { passive: false }
-        );
-
-        window.addEventListener('resize', () => {
-            DrawColorWheel();
-        });
-    });
+            }
+            Bubble('end');
+        };
+    }
 
     function Bubble(type: 'draw' | 'start' | 'move' | 'end') {
         dispatch(type, { circle, point, canvas, context, wheel });
@@ -102,13 +78,14 @@
         return Math.min(high, Math.max(low, value));
     }
 
-    function GetPoint(e) {
+    function GetPoint(e: MouseEvent | TouchEvent) {
+        let { clientX, clientY } = 'touches' in e ? e.touches[0] : e;
         const { width, height, left, top } = canvas.getBoundingClientRect();
         const scaleX = canvas.width / width;
         const scaleY = canvas.height / height;
         const ref = {
-            x: (e.clientX - left) * scaleX,
-            y: (e.clientY - top) * scaleY,
+            x: (clientX - left) * scaleX,
+            y: (clientY - top) * scaleY,
         };
         return circle.getPoint(ref, true);
     }
@@ -171,7 +148,6 @@
                 context.fill();
             } else {
                 const step = 1 / stops.length;
-
                 for (let i = 0; i < stops.length; i++) {
                     const current = stops[i];
                     const inner = circle.radius * Cap(0, 1, i * step);
@@ -188,7 +164,7 @@
         }
         Bubble('draw');
     }
-    function DrawSlice(start, end, inner, outer) {
+    function DrawSlice(start: number, end: number, inner: number, outer: number) {
         const a1 = Circle.DegreesToRadians(start);
         const b1 = Circle.DegreesToRadians(end);
         context.beginPath();
@@ -203,7 +179,8 @@
     }
 </script>
 
-<canvas class={active ? 'active' : ''} bind:this={canvas} height="200" width="200" />
+<canvas class:active bind:this={canvas} height="200" width="200" on:touchstart|nonpassive={OnStart(true)} on:mousedown={OnStart()} />
+<svelte:window on:resize={DrawColorWheel} on:mousemove={OnMove()} on:mouseup={OnEnd()} on:touchmove|nonpassive={OnMove(true)} on:touchend|nonpassive={OnEnd(true)} />
 
 <style>
     canvas {

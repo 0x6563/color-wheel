@@ -17,7 +17,7 @@
     export let skipouter = 0;
     export let stroke = '';
     export let blend: 'Smooth' | 'None' = 'None';
-    export let colorpicking: 'Calculated' | 'Image' = 'Calculated';
+    export let colorpicking: 'Calculated' | 'Rendered' = 'Calculated';
     const dispatch = createEventDispatcher();
     interface Coordinate {
         x: number;
@@ -85,7 +85,7 @@
         return Math.min(high, Math.max(low, value));
     }
 
-    function DrawPreview(translation: HarmonyTranslation, mode: 'Image' | 'Calculated') {
+    function DrawPreview(translation: HarmonyTranslation, mode: 'Rendered' | 'Calculated') {
         const scale = pct / 100;
         const calc = CalculateTranslation(angle, scale, translation);
         const coord = circle.getCoordinate(calc.angle, calc.scale);
@@ -207,7 +207,7 @@
         input {
             background: none;
             border: none;
-            color: #fff;
+            color: var(--stroke);
             font-size: 1em;
             line-height: 1em;
             text-align: right;
@@ -243,7 +243,7 @@
     }
     .level1 {
         height: 100%;
-        box-shadow: 1px 1px 4px #000;
+        box-shadow: 0px 0px 5px 1px #000;
     }
     .level2 {
         height: 90%;
@@ -270,5 +270,13 @@
     .secondary {
         height: 16px;
         width: 16px;
+    }
+    @media (orientation: portrait) {
+        .angle {
+            top: -60px;
+        }
+        .radius {
+            bottom: -60px;
+        }
     }
 </style>
