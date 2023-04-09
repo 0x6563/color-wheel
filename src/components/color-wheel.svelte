@@ -1,11 +1,12 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import { Circle } from '@services/circle';
+    import { compile } from 'mathjs';
     import Wheel from './canvas-wheel.svelte';
     import { RGB, type RGBColor } from '@services/colorspace/rgb';
     import type { ColorWheel, RGBBlender } from '@services/color';
     export let blender: RGBBlender;
-    export let harmony: HarmonyTranslation[] = [{ rotate: 180 }];
+    export let harmony: HarmonyTranslation[] = [{ angle: 'angle + 180' }];
     export let colors: string[] = ['#FF0000', '#FF8000', '#FFFF00', '#80FF00', '#00FF00', '#00FF80', '#00FFFF', '#0080FF', '#0000FF', '#8000FF', '#FF00FF', '#FF0080'];
     export let renderrotation = 0;
     export let wheelrotation = 0;
@@ -18,6 +19,7 @@
     export let stroke = '';
     export let blend: 'Smooth' | 'None' = 'None';
     export let colorpicking: 'Calculated' | 'Rendered' = 'Calculated';
+    const formulas: { [key: string]: any } = {};
     const dispatch = createEventDispatcher();
     interface Coordinate {
         x: number;
@@ -42,10 +44,8 @@
     }
     interface HarmonyTranslation {
         element?: HTMLElement;
-        rotate?: number;
-        rotateModulo?: number;
-        scaleAbsolute?: number;
-        scaleRelative?: number;
+        angle?: string;
+        scale?: string;
         children?: HarmonyTranslation[];
     }
 
@@ -68,18 +68,26 @@
     }
 
     function CalculateTranslation(angle: number, scale: number, translation: HarmonyTranslation) {
-        let offset = 0;
-        if (translation.scaleAbsolute) {
-            offset = translation.scaleAbsolute;
-        } else if (translation.scaleRelative && translation.scaleRelative > 0) {
-            offset = (1 - scale) * translation.scaleRelative + scale;
-        } else if (translation.scaleRelative && translation.scaleRelative < 0) {
-            offset = scale * translation.scaleRelative;
+        let scale2;
+        let angle2;
+        if (translation.angle) {
+            angle2 = CalculateFormula(translation.angle, angle, scale);
+        }
+        if (translation.scale) {
+            scale2 = CalculateFormula(translation.scale, angle, scale);
         }
         return {
-            angle: Circle.Rotate(translation.rotateModulo ? angle % translation.rotateModulo : angle, translation.rotate || 0),
-            scale: Cap(0, 1, scale + offset),
+            angle: typeof angle2 === 'undefined' ? angle : Circle.Rotate(angle2),
+            scale: typeof scale2 === 'undefined' ? scale : Cap(0, 1, scale2),
         };
+    }
+    function CalculateFormula(formula: string, angle: number, scale: number) {
+        try {
+            if (!formulas[formula]) {
+                formulas[formula] = compile(formula);
+            }
+            return formulas[formula].evaluate({ angle, scale });
+        } catch (error) {}
     }
     function Cap(low: number, high: number, value: number) {
         return Math.min(high, Math.max(low, value));

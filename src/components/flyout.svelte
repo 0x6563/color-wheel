@@ -43,5 +43,8 @@
         &.expanded {
             opacity: 1;
         }
+        .inner {
+            overflow: hidden;
+        }
     }
 </style>

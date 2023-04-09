@@ -23,22 +23,34 @@
     ColorSetsFull.Custom = Array.from({ length: 6 }).map((v) => RGB.RandomColor());
     delete ColorSets['Custom'];
     const HarmoniesFull = {
-        Custom: [{}, { rotate: 60, rotateModulo: 60 }, { rotate: 120, rotateModulo: 60 }, { rotate: 180, rotateModulo: 60 }],
-        Shades: [{}, { scaleRelative: -0.99999 }, { scaleRelative: -0.75 }, { scaleRelative: -0.5 }, { scaleRelative: -0.25 }],
+        Custom: [{}, { angle: '(angle % 60) + 60' }, { angle: '(angle % 60) + 90' }, { angle: '(angle % 60) + 120' }],
+        Shades: [{}, { scale: '.01' }, { scale: 'scale * .25' }, { scale: 'scale * .5' }, { scale: 'scale * .75' }],
         Complementary: [
-            { children: [{ scaleAbsolute: -0.1 }, { scaleAbsolute: 0.1 }] },
             {
-                rotate: 180,
+                children: [{ scale: 'scale - 0.1' }, { scale: 'scale + 0.1' }],
+            },
+            {
+                angle: 'angle + 180',
                 children: [
-                    { rotate: 180, scaleAbsolute: -0.1 },
-                    { rotate: 180, scaleAbsolute: 0.1 },
+                    {
+                        angle: 'angle + 180',
+                    },
+                    {
+                        angle: 'angle + 180',
+                        scale: 'scale - 0.1',
+                    },
+                    {
+                        angle: 'angle + 180',
+                        scale: 'scale + 0.1',
+                    },
                 ],
             },
         ],
-        'Split Complementary': [{}, { rotate: 150 }, { rotate: 210 }],
-        Triadic: [{}, { rotate: 120 }, { rotate: 240 }],
-        Tetradic: [{}, { rotate: 90 }, { rotate: 180 }, { rotate: 270 }],
-        Analagous: [{}, { rotate: 30 }, { rotate: 60 }, { rotate: 90 }],
+
+        'Split Complementary': [{}, { angle: 'angle + 150' }, { angle: 'angle + 210' }],
+        Triadic: [{}, { angle: 'angle + 120' }, { angle: 'angle + 240' }],
+        Tetradic: [{}, { angle: 'angle + 90' }, { angle: 'angle + 180' }, { angle: 'angle + 270' }],
+        Analagous: [{}, { angle: 'angle + 30' }, { angle: 'angle + 60' }, { angle: 'angle + 90' }],
     };
 
     const Harmonies: any = {
@@ -112,6 +124,18 @@
         <button on:click={() => (editHarmony = !editHarmony)} class="wide subtext">{editHarmony ? 'Hide' : 'Show'} Harmony Config</button>
         <Flyout expanded={editHarmony} polling={100}>
             <h4>Custom Harmony</h4>
+            <div class="subtext">
+                There are two variables used:
+                <ul>
+                    <li>
+                        <b>angle</b> (0-360) the angle in degrees.
+                    </li>
+                    <li>
+                        <b>scale</b> (0-1) a percentage of the radius.
+                    </li>
+                </ul>
+                Each formula is provided both variables referencing the current reference point. If a number outside (0 - 360) is returned to <b>Angle</b> it will be rotated accordingly. If a number outside of (0 - 1) is returned to <b>Scale</b> it will be capped to fit within those restraints. For examples, copy from one of the existing harmonies.
+            </div>
             <Dropdown options={Harmonies} on:select={CopyHarmony}>
                 <div slot="label" class="flx row spread subtext">Copy From</div>
                 <div slot="option" class="option" let:label let:selected class:selected>

@@ -2,15 +2,13 @@
     import { createEventDispatcher } from 'svelte';
     import Harmony from './harmony.svelte';
     import Icon from '@components/icon.svelte';
-    export let harmony: Harmony[] = [];
+    export let harmony: HarmonyTranslation[] = [];
     export let root: boolean = false;
     const dispatch = createEventDispatcher();
-    interface Harmony {
-        rotate?: number;
-        rotateModulo?: number;
-        scaleAbsolute?: number;
-        scaleRelative?: number;
-        children?: Harmony[];
+    interface HarmonyTranslation {
+        scale?: string;
+        angle?: string;
+        children?: HarmonyTranslation[];
     }
     function Extend() {
         if (!harmony) {
@@ -20,7 +18,7 @@
         harmony = harmony;
         dispatch('change');
     }
-    function Delete(h: Harmony) {
+    function Delete(h: HarmonyTranslation) {
         return () => {
             const i = harmony.indexOf(h);
             if (i >= 0) {
@@ -33,10 +31,8 @@
 
 <div class="group">
     <h4>
-        {#if root}
-            Primary
-        {:else}
-            Secondary
+        {#if !root}
+            Related
         {/if}
     </h4>
     {#if harmony}
@@ -47,17 +43,18 @@
                         <button class="delete" on:click={Delete(h)}><Icon icon="delete" /></button>
                     {/if}
                 </div>
-                <Harmony bind:harmony={h} {root} on:change={() => dispatch('change')} />
+                <Harmony bind:harmony={h} {root} disabled={root && i == 0} on:change={() => dispatch('change')} />
             </div>
         {/each}
     {/if}
-    <button class="extend" on:click={Extend}>+</button>
+    <button class="extend" on:click={Extend}><Icon icon="add_circle" align="top" /></button>
     <div class="hr" />
 </div>
 
 <style lang="scss">
     h4 {
         text-align: left;
+        margin: 12px 0 4px 0;
     }
     .group {
         width: 100%;
@@ -78,8 +75,9 @@
     }
     .delete {
         position: absolute;
-        top: 12px;
-        left: 6px;
+        padding: 0;
+        text-align: center;
+        top: 16px;
         width: 24px;
         height: 24px;
         font-size: 18px;
@@ -87,8 +85,9 @@
     .extend {
         width: 100%;
         text-align: center;
-        font-weight: 700;
-        padding: 8px 0;
+        height: 1.5em;
+        font-size: 1.5em;
+        margin: 4px;
     }
 
     .delete {

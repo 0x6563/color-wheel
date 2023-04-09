@@ -1,14 +1,13 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import HarmonyList from './harmony-list.svelte';
-    import Number from './number.svelte';
+    import Text from './text.svelte';
     export let harmony: Harmony = {};
     export let root: boolean = false;
+    export let disabled = false;
     interface Harmony {
-        rotate?: number;
-        rotateModulo?: number;
-        scaleAbsolute?: number;
-        scaleRelative?: number;
+        angle?: string;
+        scale?: string;
         children?: Harmony[];
     }
 
@@ -22,19 +21,15 @@
     <div class="flx column">
         <div class="section flx row spread">
             <span class="label">Angle</span>
-            <Number bind:value={harmony.rotate} on:change={onChange} min={-360} max={360} />
+            <span class="flx grow">
+                = <Text classes="grow variable" bind:value={harmony.angle} on:change={onChange} {disabled} ifnull="angle" />
+            </span>
         </div>
         <div class="section flx row spread">
-            <span class="label">Modulus</span>
-            <Number bind:value={harmony.rotateModulo} on:change={onChange} min={0} max={360} />
-        </div>
-        <div class="section flx row spread">
-            <span class="label">Scale Absolute</span>
-            <Number bind:value={harmony.scaleAbsolute} on:change={onChange} min={-1} max={1} step={0.01} />
-        </div>
-        <div class="section flx row spread">
-            <span class="label">Scale Relative</span>
-            <Number bind:value={harmony.scaleRelative} on:change={onChange} min={-1} max={1} step={0.01} />
+            <span class="label">Scale</span>
+            <span class="flx grow">
+                = <Text classes="grow variable" bind:value={harmony.scale} on:change={onChange} {disabled} ifnull="scale" />
+            </span>
         </div>
     </div>
 
@@ -44,6 +39,12 @@
 </div>
 
 <style lang="scss">
+    .row {
+        min-height: 32px;
+    }
+    .label {
+        width: 10ch;
+    }
     .group {
         display: block;
         flex: 1 1 auto;
@@ -52,7 +53,7 @@
     .section {
         text-align: center;
         :global(input) {
-            text-align: center;
+            text-align: right;
         }
     }
 </style>
