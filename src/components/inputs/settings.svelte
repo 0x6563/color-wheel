@@ -31,10 +31,7 @@
             },
             {
                 angle: 'angle + 180',
-                children: [
-                    {
-                        angle: 'angle + 180',
-                    },
+                children: [ 
                     {
                         angle: 'angle + 180',
                         scale: 'scale - 0.1',
