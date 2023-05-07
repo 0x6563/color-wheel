@@ -31,7 +31,7 @@
             },
             {
                 angle: 'angle + 180',
-                children: [ 
+                children: [
                     {
                         angle: 'angle + 180',
                         scale: 'scale - 0.1',
@@ -131,7 +131,7 @@
                         <b>scale</b> (0-1) a percentage of the radius.
                     </li>
                 </ul>
-                Each formula is provided both variables referencing the current reference point. If a number outside (0 - 360) is returned to <b>Angle</b> it will be rotated accordingly. If a number outside of (0 - 1) is returned to <b>Scale</b> it will be capped to fit within those restraints. For examples, copy from one of the existing harmonies.
+                Each formula is provided both variables referencing the current reference point. If a number outside (0 - 360) is returned to<b>Angle</b> it will be rotated accordingly. If a number outside of (0 - 1) is returned to <b>Scale</b> it will be capped to fit within those restraints. For examples, copy from one of the existing harmonies.
             </div>
             <Dropdown options={Harmonies} on:select={CopyHarmony}>
                 <div slot="label" class="flx row spread subtext">Copy From</div>
