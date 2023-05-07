@@ -44,6 +44,10 @@
     }
 </script>
 
+<svelte:head>
+    <title>Color Wheel by 0x6563</title>
+</svelte:head>
+
 <div id="app" class:light={theme == 'light'} class:dark={theme == 'dark'}>
     <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div class="container">
